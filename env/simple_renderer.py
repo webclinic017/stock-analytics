@@ -7,6 +7,7 @@ def plotly_render(run_info: dict, html_save_path: str):
     df = pd.DataFrame(run_info).set_index("Date")
     df["Holding"] = df['Holding'].replace(to_replace=False, value=0)
     df["Holding"] = df['Holding'].replace(to_replace=True, value=1)
+    print("About to save!")
     fig = make_subplots(
         rows=4, cols=1,
         shared_xaxes=True, vertical_spacing=0.02

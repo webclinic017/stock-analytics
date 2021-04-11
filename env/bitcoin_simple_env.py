@@ -10,16 +10,24 @@ https://github.com/fhaynes/Bitcoin-Trader-RL/blob/master/env/BitcoinTradingEnv.p
 
 class BitcoinTradingEnv(gym.Env):
 
-    def __init__(self, data_path, html_save_path="result.html", lookback_window_size=40, initial_balance=1000):
+    def __init__(self, data_path,
+                 html_save_path="result.html",
+                 lookback_window_size=40,
+                 initial_balance=1000,
+                 debug=False):
 
         self.html_save_path = html_save_path
         self.df = pd.read_pickle(data_path)
         self.df = self.df.dropna().reset_index()
 
-        start = 10000
-        end = 12000
-        self.df = self.df.iloc[start:end]
+        start = 100
+        if debug:
+            end = 1200
+            self.df = self.df.iloc[start:end]
+        else:
+            self.df = self.df.iloc[start:]
 
+        print("N-steps: ", len(self.df))
         self.viewer = None
 
         self.lookback_window_size = lookback_window_size
@@ -124,6 +132,7 @@ class BitcoinTradingEnv(gym.Env):
 
         if done:
             import joblib
+            print("Dumping data")
             joblib.dump(self.run_info, "data/run_info.joblib")
 
         return obs, reward, done, {"steps_left": self.steps_left, "net_worth": self.net_worth}
