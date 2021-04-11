@@ -87,9 +87,11 @@ class BitcoinTradingEnv(gym.Env):
         if action_type == 0:
             if not self.holding:  # If we are already holding, do nothing
                 self.buy_price = current_price
+                # add buy logic here
                 self.holding = True  # We are holding
 
         elif action_type == 1:
+            #add sell logic here
             self.holding = False  # We sold everything :)
 
         self.run_info['Price'].append(current_price)
