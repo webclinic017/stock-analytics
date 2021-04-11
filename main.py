@@ -11,8 +11,8 @@ policy = RoundRobin()
 while True:
     #print("RUN")
     action = policy(obs)
-    obs, reward, done, _, steps_left = env.step(action)
-    print(steps_left, done)
+    obs, reward, done, _, steps_left, net_worth = env.step(action)
+    print(steps_left, done, net_worth)
     if done:
         break
 
