@@ -17,7 +17,7 @@ class BitcoinTradingEnv(gym.Env):
         self.df = self.df.dropna().reset_index()
 
         start = 10000
-        end = 11000
+        end = 12000
         self.df = self.df.iloc[start:end]
 
         self.lookback_window_size = lookback_window_size
@@ -93,46 +93,52 @@ class BitcoinTradingEnv(gym.Env):
         # action_type = action[0]
         action_type = action
         #amount = action[1] / 10
-        amount = self.balance
+        amount = self.net_worth
 
-        btc_bought = 0
-        btc_sold = 0
-        cost = 0
-        sales = 0
+        # btc_bought = 0
+        # btc_sold = 0
+        # cost = 0
+        # sales = 0
 
         if action_type == 0:
             if not self.holding:  # If we are already holding, do nothing
-                btc_bought = self.balance / current_price * amount
-                cost = btc_bought * current_price #* (1 + self.commission)
 
-                self.btc_held += btc_bought
-                self.balance -= cost
+                self.buy_price = current_price
+                # btc_bought = self.net_worth / current_price * amount
+                # cost = btc_bought #* current_price #* (1 + self.commission)
+                #
+                # self.btc_held += btc_bought
+                # #self.balance -= cost
 
                 self.holding = True  # We are holding
 
         elif action_type == 1:
-            btc_sold = self.btc_held * amount
-            sales = btc_sold * current_price # * (1 - self.commission)
-
-            self.btc_held -= btc_sold
-            self.balance += sales
+            # btc_sold = self.btc_held * amount
+            # sales = btc_sold * current_price # * (1 - self.commission)
+            #
+            # self.btc_held -= btc_sold
+            # self.balance += sales
+            if self.holding:
+                diff = (current_price - self.buy_price)
+                gain_prc = diff/self.buy_price
+                self.net_worth = self.net_worth * (1 + gain_prc)
 
             self.holding = False # We sold everything :)
 
-        if btc_sold > 0 or btc_bought > 0:
-            self.trades.append({'step': self.frame_start + self.current_step,
-                                'amount': btc_sold if btc_sold > 0 else btc_bought, 'total': sales if btc_sold > 0 else cost,
-                                'type': "sell" if btc_sold > 0 else "buy"})
+        # if btc_sold > 0 or btc_bought > 0:
+        #     self.trades.append({'step': self.frame_start + self.current_step,
+        #                         'amount': btc_sold if btc_sold > 0 else btc_bought, 'total': sales if btc_sold > 0 else cost,
+        #                         'type': "sell" if btc_sold > 0 else "buy"})
 
-        self.net_worth = self.balance + self.btc_held * current_price
+        #self.net_worth = self.balance + self.btc_held * current_price
 
-        self.account_history = np.append(self.account_history, [
-            [self.balance],
-            [btc_bought],
-            [cost],
-            [btc_sold],
-            [sales]
-        ], axis=1)
+        # self.account_history = np.append(self.account_history, [
+        #     [self.balance],
+        #     [btc_bought],
+        #     [cost],
+        #     [btc_sold],
+        #     [sales]
+        # ], axis=1)
 
 
     def step(self, action):
@@ -145,17 +151,29 @@ class BitcoinTradingEnv(gym.Env):
         self.steps_left -= 1
         self.current_step += 1
 
-        if self.steps_left == 0:
-            self.balance += self.btc_held * current_price
-            self.btc_held = 0
-
-            self._reset_session()
+        # if self.steps_left == 0:
+        #     # self.balance += self.btc_held * current_price
+        #     # self.btc_held = 0
+        #
+        #     self._reset_session()
 
         obs = self._next_observation()
         reward = self.net_worth - prev_net_worth
-        done = self.net_worth <= 0
+        if self.net_worth <= 0:
+            print("Net worth < 0 => Done")
+            done = True
+        elif self.steps_left == 0:
+            print("Steps left == 0 => Done")
+            done = True
+            if self.holding:
+                diff = (current_price - self.buy_price)
+                gain_prc = diff/self.buy_price
+                self.net_worth = self.net_worth * (1 + gain_prc)
+        else:
+            done = False
+        # done = self.net_worth <= 0
 
-        return obs, reward, done, {}, self.steps_left
+        return obs, reward, done, {}, self.steps_left, self.net_worth
 
 
     def render(self, mode='human', **kwargs):

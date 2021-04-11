@@ -9,4 +9,4 @@ class RoundRobin:
     def select_action(self, obs):
         action = self.turn
         self.turn = 1 - self.turn
-        return action
+        return 0
