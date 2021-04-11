@@ -27,7 +27,6 @@ class BitcoinTradingEnv(gym.Env):
         else:
             self.df = self.df.iloc[start:]
 
-        print("N-steps: ", len(self.df))
         self.viewer = None
 
         self.lookback_window_size = lookback_window_size
@@ -102,6 +101,7 @@ class BitcoinTradingEnv(gym.Env):
             self.holding = True  # We are holding
 
         elif action_type == 1:
+            #add sell logic here
             self.holding = False  # We sold everything :)
 
         self.run_info['Price'].append(current_price)
