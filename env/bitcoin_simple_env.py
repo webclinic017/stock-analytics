@@ -10,8 +10,9 @@ https://github.com/fhaynes/Bitcoin-Trader-RL/blob/master/env/BitcoinTradingEnv.p
 
 class BitcoinTradingEnv(gym.Env):
 
-    def __init__(self, data_path, lookback_window_size=40, initial_balance=1000):
+    def __init__(self, data_path, html_save_path="result.html", lookback_window_size=40, initial_balance=1000):
 
+        self.html_save_path = html_save_path
         self.df = pd.read_pickle(data_path)
         self.df = self.df.dropna().reset_index()
 
@@ -130,25 +131,5 @@ class BitcoinTradingEnv(gym.Env):
 
 
     def render(self, mode='human', **kwargs):
-        if mode == 'system':
-            print('Price: ' + str(self._get_current_price()))
-            print(
-                'Bought: ' + str(self.account_history[2][self.current_step + self.frame_start]))
-            print(
-                'Sold: ' + str(self.account_history[4][self.current_step + self.frame_start]))
-            print('Net worth: ' + str(self.net_worth))
-
-        elif mode == 'human':
-            if self.viewer is None:
-                self.viewer = BitcoinTradingGraph(
-                    self.df, kwargs.get('title', None))
-
-            self.viewer.render(self.frame_start + self.current_step,
-                               self.net_worth,
-                               self.trades,
-                               window_size=self.lookback_window_size)
-
-    def close(self):
-        if self.viewer is not None:
-            self.viewer.close()
-            self.viewer = None
+        from .simple_renderer import plotly_render
+        plotly_render(self.run_info, self.html_save_path)
