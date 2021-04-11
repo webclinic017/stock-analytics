@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -19,7 +20,8 @@ def plotly_render(run_info: dict, html_save_path: str):
         go.Scatter(x=df.index, y=df['Price'], name="Asset price"), row=2, col=1
     )
     fig.add_trace(
-        go.Scatter(x=df.index, y=df['Holding'], name="Holding", marker={"color": "green"}), row=3, col=1
+        go.Scatter(x=np.repeat(df.index, 2)[1:], y=np.repeat(df['Holding'], 2)[:-1], name="Holding", 
+                   marker={"color": "green"}, fill='tonexty'), row=3, col=1
     )
     fig.add_trace(
         go.Bar(x=df.index, y=df['Volume'], marker={"color": "black"}, name="Volume"), row=4, col=1
