@@ -4,7 +4,7 @@ from env.bitcoin_simple_env import BitcoinTradingEnv
 from actionMaker import *
 
 data_path = "data/kaggle_bitcoin_preprocessed.pkl"
-env = BitcoinTradingEnv(data_path)
+env = BitcoinTradingEnv(data_path, html_save_path="data/result.html")
 obs = env.reset()
 
 policy = RoundRobin()
@@ -23,4 +23,4 @@ while True:
     if done:
         break
 
-# env.render()
+env.render()
