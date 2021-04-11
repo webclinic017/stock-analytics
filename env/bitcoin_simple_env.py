@@ -74,8 +74,8 @@ class BitcoinTradingEnv(gym.Env):
 
 
     def update_net_worth(self, current_price):
-        diff = (current_price - self.buy_price)
-        gain_prc = diff / self.buy_price
+        diff = (current_price - self.previous_price)
+        gain_prc = diff / self.previous_price
         self.net_worth = self.net_worth * (1 + gain_prc)
 
 
@@ -85,10 +85,13 @@ class BitcoinTradingEnv(gym.Env):
         if self.holding:
             self.update_net_worth(current_price)
 
+        self.previous_price = current_price
+
+
         if action_type == 0:
-            if not self.holding:  # If we are already holding, do nothing
-                self.buy_price = current_price
-                self.holding = True  # We are holding
+            # if not self.holding:  # If we are already holding, do nothing
+                # self.buy_price = current_price
+            self.holding = True  # We are holding
 
         elif action_type == 1:
             self.holding = False  # We sold everything :)
@@ -116,10 +119,6 @@ class BitcoinTradingEnv(gym.Env):
         elif self.steps_left == 0:
             print("Steps left == 0 => Done")
             done = True
-            if self.holding:
-                diff = (current_price - self.buy_price)
-                gain_prc = diff/self.buy_price
-                self.net_worth = self.net_worth * (1 + gain_prc)
         else:
             done = False
 
