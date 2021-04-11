@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import pandas as pd
 import numpy as np
-
+from .bitcoin_trading_graph import BitcoinTradingGraph
 """
 Modifying the following code:
 https://github.com/fhaynes/Bitcoin-Trader-RL/blob/master/env/BitcoinTradingEnv.py
@@ -13,12 +13,13 @@ class BitcoinTradingEnv(gym.Env):
     def __init__(self, data_path, lookback_window_size=40, initial_balance=1000):
 
         self.df = pd.read_pickle(data_path)
-
         self.df = self.df.dropna().reset_index()
 
         start = 10000
         end = 12000
         self.df = self.df.iloc[start:end]
+
+        self.viewer = None
 
         self.lookback_window_size = lookback_window_size
         self.initial_balance = initial_balance
@@ -29,42 +30,24 @@ class BitcoinTradingEnv(gym.Env):
 
         self.holding = False
 
+        keys = ['Holding', 'Net_worth', 'Price', 'Date', 'Volume']
+        self.run_info = {key: list() for key in keys}
+
 
     def _next_observation(self):
         end = self.current_step + self.lookback_window_size + 1
-
-        #scaled_df = self.active_df.values[:end].astype('float64')
         scaled_df = self.active_df
-        # scaled_df = self.scaler.fit_transform(scaled_df)
-        # scaled_df = pd.DataFrame(scaled_df, columns=self.df.columns)
 
         obs = np.array([
-            # scaled_df['Open'].values[self.current_step:end],
-            # scaled_df['High'].values[self.current_step:end],
-            # scaled_df['Low'].values[self.current_step:end],
             scaled_df['Price'].values[self.current_step:end],
             scaled_df['Volume'].values[self.current_step:end],
         ])
-
-        # scaled_history = self.scaler.fit_transform(self.account_history)
-
-        # obs = np.append(
-        #     obs, scaled_history[:, -(self.lookback_window_size + 1):], axis=0)
-
-        # obs = np.append(
-        #     obs, scaled_df[["Price", "Volume"]].values[:, -(self.lookback_window_size + 1):], axis=0)
         return obs
 
     def _reset_session(self):
         self.current_step = 0
-        # if self.serial:
         self.steps_left = len(self.df) - self.lookback_window_size - 1
         self.frame_start = self.lookback_window_size
-        # else:
-        #     self.steps_left = np.random.randint(1, MAX_TRADING_SESSION)
-        #     self.frame_start = np.random.randint(
-        #         self.lookback_window_size, len(self.df) - self.steps_left)
-
         self.active_df = self.df[self.frame_start - self.lookback_window_size:
                                  self.frame_start + self.steps_left]
 
@@ -89,73 +72,40 @@ class BitcoinTradingEnv(gym.Env):
         return self.df['Price'].values[self.frame_start + self.current_step]
 
 
-    def _take_action(self, action, current_price):
-        # action_type = action[0]
-        action_type = action
-        #amount = action[1] / 10
-        amount = self.net_worth
+    def update_net_worth(self, current_price):
+        diff = (current_price - self.buy_price)
+        gain_prc = diff / self.buy_price
+        self.net_worth = self.net_worth * (1 + gain_prc)
 
-        # btc_bought = 0
-        # btc_sold = 0
-        # cost = 0
-        # sales = 0
+
+    def _take_action(self, action, current_price):
+        action_type = action
+
+        if self.holding:
+            self.update_net_worth(current_price)
 
         if action_type == 0:
             if not self.holding:  # If we are already holding, do nothing
-
                 self.buy_price = current_price
-                # btc_bought = self.net_worth / current_price * amount
-                # cost = btc_bought #* current_price #* (1 + self.commission)
-                #
-                # self.btc_held += btc_bought
-                # #self.balance -= cost
-
                 self.holding = True  # We are holding
 
         elif action_type == 1:
-            # btc_sold = self.btc_held * amount
-            # sales = btc_sold * current_price # * (1 - self.commission)
-            #
-            # self.btc_held -= btc_sold
-            # self.balance += sales
-            if self.holding:
-                diff = (current_price - self.buy_price)
-                gain_prc = diff/self.buy_price
-                self.net_worth = self.net_worth * (1 + gain_prc)
+            self.holding = False  # We sold everything :)
 
-            self.holding = False # We sold everything :)
-
-        # if btc_sold > 0 or btc_bought > 0:
-        #     self.trades.append({'step': self.frame_start + self.current_step,
-        #                         'amount': btc_sold if btc_sold > 0 else btc_bought, 'total': sales if btc_sold > 0 else cost,
-        #                         'type': "sell" if btc_sold > 0 else "buy"})
-
-        #self.net_worth = self.balance + self.btc_held * current_price
-
-        # self.account_history = np.append(self.account_history, [
-        #     [self.balance],
-        #     [btc_bought],
-        #     [cost],
-        #     [btc_sold],
-        #     [sales]
-        # ], axis=1)
-
+        self.run_info['Price'].append(current_price)
+        self.run_info['Holding'].append(self.holding)
+        self.run_info['Net_worth'].append(self.net_worth)
+        self.run_info['Date'].append(self.df['date'].values[self.current_step])
+        self.run_info['Volume'].append(self.df['Volume'].values[self.current_step])
 
     def step(self, action):
         current_price = self._get_current_price() + 0.01
-
         prev_net_worth = self.net_worth
 
         self._take_action(action, current_price)
 
         self.steps_left -= 1
         self.current_step += 1
-
-        # if self.steps_left == 0:
-        #     # self.balance += self.btc_held * current_price
-        #     # self.btc_held = 0
-        #
-        #     self._reset_session()
 
         obs = self._next_observation()
         reward = self.net_worth - prev_net_worth
@@ -171,9 +121,12 @@ class BitcoinTradingEnv(gym.Env):
                 self.net_worth = self.net_worth * (1 + gain_prc)
         else:
             done = False
-        # done = self.net_worth <= 0
 
-        return obs, reward, done, {}, self.steps_left, self.net_worth
+        if done:
+            import joblib
+            joblib.dump(self.run_info, "data/run_info.joblib")
+
+        return obs, reward, done, {"steps_left": self.steps_left, "net_worth": self.net_worth}
 
 
     def render(self, mode='human', **kwargs):

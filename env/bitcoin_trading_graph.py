@@ -7,7 +7,7 @@ from datetime import datetime
 
 # finance module is no longer part of matplotlib
 # see: https://github.com/matplotlib/mpl_finance
-from mpl_finance import candlestick_ochl as candlestick
+# from mplfinance import candlestick_ochl as candlestick
 
 style.use('ggplot')
 
@@ -56,7 +56,9 @@ class BitcoinTradingGraph:
         legend = self.net_worth_ax.legend(loc=2, ncol=2, prop={'size': 8})
         legend.get_frame().set_alpha(0.4)
 
-        last_date = self.df['Timestamp'].values[current_step]
+        # last_date = self.df['Timestamp'].values[current_step]
+        last_date = self.df['date'].values[current_step]
+
         last_net_worth = self.net_worths[current_step]
 
         # Annotate the current net worth on the net worth graph
@@ -74,40 +76,41 @@ class BitcoinTradingGraph:
     def _render_price(self, current_step, net_worth, step_range, dates):
         self.price_ax.clear()
 
+        plt.plot(dates, net_worth)
         # Format data for OHCL candlestick graph
         # candlesticks = zip(dates,
         #                    self.df['Open'].values[step_range], self.df['Close'].values[step_range],
         #                    self.df['High'].values[step_range], self.df['Low'].values[step_range])
 
-        candlesticks = zip(dates,
-                           self.df['Price'].values[step_range], self.df['Price'].values[step_range],
-                           self.df['Price'].values[step_range], self.df['Price'].values[step_range])
+        # candlesticks = zip(dates,
+        #                    self.df['Price'].values[step_range], self.df['Price'].values[step_range],
+        #                    self.df['Price'].values[step_range], self.df['Price'].values[step_range])
+        #
+        #
+        # # Plot price using candlestick graph from mpl_finance
+        # candlestick(self.price_ax, candlesticks, width=2)
+
+        # last_date = self.df['Timestamp'].values[current_step]
+        # # last_close = self.df['Close'].values[current_step]
+        # # last_high = self.df['High'].values[current_step]
+        #
+        # last_close = self.df['Price'].values[current_step]
+        # last_high = self.df['Price'].values[current_step]
 
 
-        # Plot price using candlestick graph from mpl_finance
-        candlestick(self.price_ax, candlesticks, width=2)
-
-        last_date = self.df['Timestamp'].values[current_step]
-        # last_close = self.df['Close'].values[current_step]
-        # last_high = self.df['High'].values[current_step]
-
-        last_close = self.df['Price'].values[current_step]
-        last_high = self.df['Price'].values[current_step]
-
-
-        # Print the current price to the price axis
-        self.price_ax.annotate('{0:.2f}'.format(last_close), (last_date, last_close),
-                               xytext=(last_date, last_high),
-                               bbox=dict(boxstyle='round',
-                                         fc='w', ec='k', lw=1),
-                               color="black",
-                               fontsize="small")
-
-        # Shift price axis up to give volume chart space
-        ylim = self.price_ax.get_ylim()
-        self.price_ax.set_ylim(ylim[0] - (ylim[1] - ylim[0])
-                               * VOLUME_CHART_HEIGHT, ylim[1])
-
+        # # Print the current price to the price axis
+        # self.price_ax.annotate('{0:.2f}'.format(last_close), (last_date, last_close),
+        #                        xytext=(last_date, last_high),
+        #                        bbox=dict(boxstyle='round',
+        #                                  fc='w', ec='k', lw=1),
+        #                        color="black",
+        #                        fontsize="small")
+        #
+        # # Shift price axis up to give volume chart space
+        # ylim = self.price_ax.get_ylim()
+        # self.price_ax.set_ylim(ylim[0] - (ylim[1] - ylim[0])
+        #                        * VOLUME_CHART_HEIGHT, ylim[1])
+        #
     def _render_volume(self, current_step, net_worth, step_range, dates):
         self.volume_ax.clear()
 
@@ -165,7 +168,8 @@ class BitcoinTradingGraph:
 
         window_start = max(current_step - window_size, 0)
         step_range = range(window_start, current_step + 1)
-        dates = self.df['Timestamp'].values[step_range]
+        # dates = self.df['Timestamp'].values[step_range]
+        dates = self.df['date'].values[step_range]
 
         self._render_net_worth(current_step, net_worth, step_range, dates)
         self._render_price(current_step, net_worth, step_range, dates)
