@@ -2,6 +2,7 @@ import gym
 from gym import spaces
 import pandas as pd
 import numpy as np
+from datetime import timedelta
 from .bitcoin_trading_graph import BitcoinTradingGraph
 """
 Modifying the following code:
@@ -27,6 +28,8 @@ class BitcoinTradingEnv(gym.Env):
         else:
             self.df = self.df.iloc[start:]
 
+        self.time_plot_min = self.df['date'].max() - timedelta(days=5)
+        self.df = self.df[self.df["date"] > self.time_plot_min]
         self.viewer = None
 
         self.lookback_window_size = lookback_window_size
@@ -133,11 +136,11 @@ class BitcoinTradingEnv(gym.Env):
         if done:
             import joblib
             print("Dumping data")
-            joblib.dump(self.run_info, "data/run_info.joblib")
+            #joblib.dump(self.run_info, "data/run_info.joblib")
 
         return obs, reward, done, {"steps_left": self.steps_left, "net_worth": self.net_worth}
 
 
     def render(self, mode='human', **kwargs):
         from .simple_renderer import plotly_render
-        plotly_render(self.run_info, self.html_save_path)
+        plotly_render(self.run_info, self.html_save_path, self.time_plot_min)
