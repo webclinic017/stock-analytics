@@ -1,6 +1,5 @@
 
 class RoundRobin:
-
     turn = 0
 
     def __call__(self, obs):

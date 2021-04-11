@@ -1,6 +1,8 @@
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
 from datetime import datetime
 
 def plotly_render(run_info: dict, html_save_path: str, time_plot_min: datetime):
@@ -8,13 +10,11 @@ def plotly_render(run_info: dict, html_save_path: str, time_plot_min: datetime):
     df["Holding"] = df['Holding'].replace(to_replace=False, value=0)
     df["Holding"] = df['Holding'].replace(to_replace=True, value=1)
 
-    df_sub = df[df.index > time_plot_min]
-
     """
     Subselect the time for plotting
     """
+    df_sub = df[df.index > time_plot_min]
 
-    print("About to save!")
     fig = make_subplots(
         rows=4, cols=1,
         shared_xaxes=True, vertical_spacing=0.02
@@ -26,7 +26,8 @@ def plotly_render(run_info: dict, html_save_path: str, time_plot_min: datetime):
         go.Scatter(x=df_sub.index, y=df_sub['Price'], name="Asset price"), row=2, col=1
     )
     fig.add_trace(
-        go.Scatter(x=df_sub.index, y=df_sub['Holding'], name="Holding", marker={"color": "green"}), row=3, col=1
+        go.Scatter(x=np.repeat(df_sub.index, 2)[1:], y=np.repeat(df_sub['Holding'], 2)[:-1], name="Holding",
+                   marker={"color": "green"}, fill='tonexty'), row=3, col=1
     )
     fig.add_trace(
         go.Bar(x=df_sub.index, y=df_sub['Volume'], marker={"color": "black"}, name="Volume"), row=4, col=1
