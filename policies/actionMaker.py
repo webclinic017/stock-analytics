@@ -4,15 +4,6 @@ import numpy
 import talib
 from talib import MA_Type
 
-def _next_observation(self):
-    end = self.current_step + self.lookback_window_size + 1
-    scaled_df = self.active_df
-
-    obs = np.array([
-        scaled_df['Price'].values[self.current_step:end],
-        scaled_df['Volume'].values[self.current_step:end],
-    ])
-    return obs
 
 def handle_data(obs):
     prices, volumes = obs
