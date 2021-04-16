@@ -7,9 +7,10 @@ from datetime import datetime
 df = pd.read_csv("./data/kaggle_bitcoin.csv")
 df["Date"] = pd.to_datetime(df["Timestamp"], unit="s")
 start_date = datetime(year=2019, month=2, day=1)
+steps = 2000
 
 
-env = BitcoinTradingEnv(df, start_date)
+env = BitcoinTradingEnv(df, start_date, steps=steps)
 obs = env.reset()
 policy = BollingerBasicAgent()
 n_steps = len(env.df)
