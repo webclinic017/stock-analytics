@@ -1,14 +1,17 @@
 import pandas as pd
-from policies.baselines import RoundRobin
+from policies.bollinger import BollingerBasicAgent
 from env.bitcoin_simple_env import BitcoinTradingEnv
 from tqdm import tqdm
+from datetime import datetime
+
+df = pd.read_csv("./data/kaggle_bitcoin.csv")
+df["Date"] = pd.to_datetime(df["Timestamp"], unit="s")
+start_date = datetime(year=2019, month=2, day=1)
 
 
-data_path = "data/kaggle_bitcoin_preprocessed.pkl"
-env = BitcoinTradingEnv(data_path, html_save_path="data/result.html", debug=False)
+env = BitcoinTradingEnv(df, start_date)
 obs = env.reset()
-
-policy = RoundRobin()
+policy = BollingerBasicAgent()
 n_steps = len(env.df)
 
 for i in tqdm(range(n_steps)):
@@ -17,5 +20,10 @@ for i in tqdm(range(n_steps)):
     if done:
         break
 
+df_res = obs.dropna()
+max_gain = df_res['Close'].iloc[0] / df_res['Close'].iloc[-1] * 100
+gain = (df_res['net_worth'].iloc[0]/df_res['net_worth'].iloc[-1]) * 100
+print("Gained: ", gain)
+print("Max possible gain: ", max_gain)
 
-env.render()
+policy.render(df_res)

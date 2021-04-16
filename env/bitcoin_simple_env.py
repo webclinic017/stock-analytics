@@ -2,92 +2,60 @@ import gym
 from gym import spaces
 import pandas as pd
 import numpy as np
-from datetime import timedelta
-from .bitcoin_trading_graph import BitcoinTradingGraph
+from datetime import datetime
 """
-Modifying the following code:
-https://github.com/fhaynes/Bitcoin-Trader-RL/blob/master/env/BitcoinTradingEnv.py
+Actions: 0 = sell, 1 = hold, 2 = buy
 """
 
 class BitcoinTradingEnv(gym.Env):
 
-    def __init__(self, data_path,
+    def __init__(self, df,
+                 start_date,
                  html_save_path="result.html",
-                 lookback_window_size=40,
                  initial_balance=1000,
-                 debug=False):
+                 debug=False,
+                 start_idx=1000,
+                 steps=2000):
 
+        self.df = df.copy()
+        self.df = self.df[self.df.Date > start_date]
+        self.df = self.df.iloc[:start_idx+steps]
         self.html_save_path = html_save_path
-        self.df = pd.read_pickle(data_path)
         self.df = self.df.dropna().reset_index()
+        self.df = self.df.sort_values('Date')
+        self.df["net_worth"] = None
+        self.df["action"] = None
+        self.df["reward"] = None
 
-        start = 100
         if debug:
-            end = 1200
-            self.df = self.df.iloc[start:end]
-        else:
-            self.df = self.df.iloc[start:]
+            self.df = self.df.iloc[:start_idx+1000]
 
-        self.time_plot_min = self.df['date'].max() - timedelta(days=5)
-        self.df = self.df[self.df["date"] > self.time_plot_min]
-        self.viewer = None
-
-        self.lookback_window_size = lookback_window_size
         self.initial_balance = initial_balance
-
-        self.space = spaces.MultiDiscrete([3, 10])
-        self.observation_space = spaces.Box(
-            low=0, high=1, shape=(10, lookback_window_size + 1), dtype=np.float16)
-
         self.holding = False
-
-        keys = ['Holding', 'Net_worth', 'Price', 'Date', 'Volume']
-        self.run_info = {key: list() for key in keys}
-
-
-    def _next_observation(self):
-        end = self.current_step + self.lookback_window_size + 1
-        scaled_df = self.active_df
-
-        obs = np.array([
-            scaled_df['Price'].values[self.current_step:end],
-            scaled_df['Volume'].values[self.current_step:end],
-        ])
-        return obs
+        self.current_step = start_idx
+        self.start_idx = start_idx
 
     def _reset_session(self):
-        self.current_step = 0
-        self.steps_left = len(self.df) - self.lookback_window_size - 1
-        self.frame_start = self.lookback_window_size
-        self.active_df = self.df[self.frame_start - self.lookback_window_size:
-                                 self.frame_start + self.steps_left]
-
+        self.current_step = self.start_idx
+        self.steps_left = len(self.df) - self.current_step
 
     def reset(self):
         self.balance = self.initial_balance
         self.net_worth = self.initial_balance
         self.btc_held = 0
         self._reset_session()
-        self.account_history = np.repeat([
-            [self.balance],
-            [0],
-            [0],
-            [0],
-            [0]
-        ], self.lookback_window_size + 1, axis=1)
-        self.trades = []
         return self._next_observation()
 
+    def _next_observation(self):
+        return self.df.loc[:self.current_step]
 
     def _get_current_price(self):
-        return self.df['Price'].values[self.frame_start + self.current_step]
-
+        return self.df['Close'].values[self.current_step]
 
     def update_net_worth(self, current_price):
         diff = (current_price - self.previous_price)
         gain_prc = diff / self.previous_price
         self.net_worth = self.net_worth * (1 + gain_prc)
-
 
     def _take_action(self, action, current_price):
         action_type = action
@@ -97,33 +65,28 @@ class BitcoinTradingEnv(gym.Env):
 
         self.previous_price = current_price
 
-
-        if action_type == 0:
-            # if not self.holding:  # If we are already holding, do nothing
-                # self.buy_price = current_price
+        if action_type == 2:
             self.holding = True  # We are holding
 
-        elif action_type == 1:
-            #add sell logic here
+        elif action_type == 0:
             self.holding = False  # We sold everything :)
 
-        self.run_info['Price'].append(current_price)
-        self.run_info['Holding'].append(self.holding)
-        self.run_info['Net_worth'].append(self.net_worth)
-        self.run_info['Date'].append(self.df['date'].values[self.current_step])
-        self.run_info['Volume'].append(self.df['Volume'].values[self.current_step])
 
     def step(self, action):
-        current_price = self._get_current_price() + 0.01
+        current_price = self._get_current_price()
         prev_net_worth = self.net_worth
 
         self._take_action(action, current_price)
+        reward = self.net_worth - prev_net_worth
+
+        self.df.loc[self.current_step, 'action'] = action
+        self.df.loc[self.current_step, 'reward'] = reward
+        self.df.loc[self.current_step, 'net_worth'] = self.net_worth
 
         self.steps_left -= 1
         self.current_step += 1
 
         obs = self._next_observation()
-        reward = self.net_worth - prev_net_worth
         if self.net_worth <= 0:
             print("Net worth < 0 => Done")
             done = True
@@ -133,14 +96,9 @@ class BitcoinTradingEnv(gym.Env):
         else:
             done = False
 
-        if done:
-            import joblib
-            print("Dumping data")
-            #joblib.dump(self.run_info, "data/run_info.joblib")
-
-        return obs, reward, done, {"steps_left": self.steps_left, "net_worth": self.net_worth}
+        return obs, reward, done, {}
 
 
-    def render(self, mode='human', **kwargs):
-        from .simple_renderer import plotly_render
-        plotly_render(self.run_info, self.html_save_path, self.time_plot_min)
+    # def render(self, mode='human', **kwargs):
+    #     from .simple_renderer import plotly_render
+    #     plotly_render(self.df, self.html_save_path, self.time_plot_min)
