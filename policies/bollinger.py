@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-class BollingerBasicAgent:
+
+class BasicBollingerAgent:
     def __init__(self, window=20, dev=2):
         self.window = window
         self.dev = dev
