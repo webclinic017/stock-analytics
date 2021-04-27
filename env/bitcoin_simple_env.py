@@ -38,11 +38,10 @@ class BitcoinTradingEnv(gym.Env):
     def _reset_session(self):
         self.current_step = self.start_idx
         self.steps_left = len(self.df) - self.current_step
+        self.net_worth = self.initial_balance
 
     def reset(self):
-        self.balance = self.initial_balance
-        self.net_worth = self.initial_balance
-        self.btc_held = 0
+        self.holding = False
         self._reset_session()
         return self._next_observation()
 
